@@ -244,7 +244,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         }
 
         // Keep the flywheel moving
-        updateCompSupplyIndex(cToken);
+        updateCompSupplyIndex(cToken); // 流动性挖矿奖励comp代币的相关操作
         distributeSupplierComp(cToken, minter);
 
         return uint(Error.NO_ERROR);
