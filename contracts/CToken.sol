@@ -403,6 +403,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         }
 
         /* Verify market's block number equals current block number */
+        // 确保前面调用了计息函数accrueinterest并正确更新了当前区块号。
         if (accrualBlockNumber != getBlockNumber()) {
             revert MintFreshnessCheck();
         }
