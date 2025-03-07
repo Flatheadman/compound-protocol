@@ -260,7 +260,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
             return 0;
         }
 
-        /* Calculate new borrow balance using the interest index:
+        /* Calculate new borrow balance using the interest index: 核心公式：
          *  recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
          */
         uint principalTimesIndex = borrowSnapshot.principal * borrowIndex;
@@ -396,7 +396,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
      * @param mintAmount The amount of the underlying asset to supply
      */
     function mintFresh(address minter, uint mintAmount) internal {
-        /* Fail if mint not allowed */
+        /* Fail if mint not allowed 可行性检查+comp代币奖励计算*/
         uint allowed = comptroller.mintAllowed(address(this), minter, mintAmount);
         if (allowed != 0) {
             revert MintComptrollerRejection(allowed);
@@ -408,6 +408,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
             revert MintFreshnessCheck();
         }
 
+        // 利息计算是通过兑换率进行的，所以兑换率的计算与跟踪是核心。
         Exp memory exchangeRate = Exp({mantissa: exchangeRateStoredInternal()});
 
         /////////////////////////
@@ -653,10 +654,10 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
             revert RepayBorrowFreshnessCheck();
         }
 
-        /* We fetch the amount the borrower owes, with accumulated interest */
+        /* We fetch the amount the borrower owes, with accumulated interest 计算当前ctoken市场的应还债务总额*/
         uint accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
 
-        /* If repayAmount == -1, repayAmount = accountBorrows */
+        /* If repayAmount == -1, repayAmount = accountBorrows  */
         uint repayAmountFinal = repayAmount == type(uint).max ? accountBorrowsPrev : repayAmount;
 
         /////////////////////////
@@ -694,6 +695,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
     /**
      * @notice The sender liquidates the borrowers collateral.
      *  The collateral seized is transferred to the liquidator.
+     * 通过偿还本合约的借款，来获取另外指定合约的抵押品
      * @param borrower The borrower of this cToken to be liquidated
      * @param cTokenCollateral The market in which to seize collateral from the borrower
      * @param repayAmount The amount of the underlying borrowed asset to repay
@@ -701,7 +703,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
     function liquidateBorrowInternal(address borrower, uint repayAmount, CTokenInterface cTokenCollateral) internal nonReentrant {
         accrueInterest();
 
-        uint error = cTokenCollateral.accrueInterest();
+        uint error = cTokenCollateral.accrueInterest(); 
         if (error != NO_ERROR) {
             // accrueInterest emits logs on errors, but we still want to log the fact that an attempted liquidation failed
             revert LiquidateAccrueCollateralInterestFailed(error);
@@ -762,10 +764,11 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         (uint amountSeizeError, uint seizeTokens) = comptroller.liquidateCalculateSeizeTokens(address(this), address(cTokenCollateral), actualRepayAmount);
         require(amountSeizeError == NO_ERROR, "LIQUIDATE_COMPTROLLER_CALCULATE_AMOUNT_SEIZE_FAILED");
 
-        /* Revert if borrower collateral token balance < seizeTokens */
+        /* Revert if borrower collateral token balance < seizeTokens 失败责任转嫁给清算者*/
         require(cTokenCollateral.balanceOf(borrower) >= seizeTokens, "LIQUIDATE_SEIZE_TOO_MUCH");
 
         // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
+        // 因为清算入口在CErc20合约中，所以有可能该合约和清算目标合约是同一个合约，在这种情况下应该使用内部调用而不是外部调用
         if (address(cTokenCollateral) == address(this)) {
             seizeInternal(address(this), liquidator, borrower, seizeTokens);
         } else {

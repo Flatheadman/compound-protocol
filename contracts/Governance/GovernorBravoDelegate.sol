@@ -73,8 +73,9 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
       */
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) public returns (uint) {
         // Reject proposals before initiating as Governor
-        require(initialProposalId != 0, "GovernorBravo::propose: Governor Bravo not active");
+        require(initialProposalId != 0, "GovernorBravo::propose: Governor Bravo not active"); // 确保已经调用过初始化函数，否则initialProposalId默认为0
         // Allow addresses above proposal threshold and whitelisted addresses to propose
+        // 检查提案人在上一个区块（防止闪电贷）的提案权重（comp持有数）是否满足最低门槛
         require(comp.getPriorVotes(msg.sender, sub256(block.number, 1)) > proposalThreshold || isWhitelisted(msg.sender), "GovernorBravo::propose: proposer votes below proposal threshold");
         require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "GovernorBravo::propose: proposal function information arity mismatch");
         require(targets.length != 0, "GovernorBravo::propose: must provide actions");

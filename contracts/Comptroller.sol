@@ -244,8 +244,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         }
 
         // Keep the flywheel moving
-        updateCompSupplyIndex(cToken); // 流动性挖矿奖励comp代币的相关操作
-        distributeSupplierComp(cToken, minter);
+        updateCompSupplyIndex(cToken); // 更新整个ctoken市场的comp指数
+        distributeSupplierComp(cToken, minter); // 更新存款者个人的应得comp指数
 
         return uint(Error.NO_ERROR);
     }
@@ -463,7 +463,9 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
     }
 
     /**
-     * @notice Checks if the liquidation should be allowed to occur
+     * @notice Checks if the liquidation should be allowed to occur 
+     * 好像只是检查了是否有账户总体赤字，如果有，允许把当前市场余额按照治理确定的比例清算。感觉太简单了点
+     * 可能策略是：化整为零，通过限制单次清算比例，从而一步一步慢慢逼近赤字平衡；如果一次性清算可能会影响市场稳定性。
      * @param cTokenBorrowed Asset which was borrowed by the borrower
      * @param cTokenCollateral Asset which was used as collateral and will be seized
      * @param liquidator The address repaying the borrow and seizing the collateral
@@ -476,7 +478,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         address liquidator,
         address borrower,
         uint repayAmount) override external returns (uint) {
-        // Shh - currently unused
+        // Shh - currently unused 冗余设计
         liquidator;
 
         if (!markets[cTokenBorrowed].isListed || !markets[cTokenCollateral].isListed) {
@@ -485,7 +487,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
 
         uint borrowBalance = CToken(cTokenBorrowed).borrowBalanceStored(borrower);
 
-        /* allow accounts to be liquidated if the market is deprecated */
+        /* allow accounts to be liquidated if the market is deprecated 分两种情况限定最大清算额度*/
         if (isDeprecated(CToken(cTokenBorrowed))) {
             require(borrowBalance >= repayAmount, "Can not repay more than the total borrow");
         } else {
@@ -756,6 +758,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
             vars.sumCollateral = mul_ScalarTruncateAddUInt(vars.tokensToDenom, vars.cTokenBalance, vars.sumCollateral);
 
             // sumBorrowPlusEffects += oraclePrice * borrowBalance
+            // borrowBalance是已存在借款数，下面的borrowAmount是假设本次借款成功后的借款数
             vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(vars.oraclePrice, vars.borrowBalance, vars.sumBorrowPlusEffects);
 
             // Calculate effects of interacting with cTokenModify
@@ -766,6 +769,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
 
                 // borrow effect
                 // sumBorrowPlusEffects += oraclePrice * borrowAmount
+                // borrowAmount是假设本次借款成功后的借款数，上面的borrowBalance是之前已存在借款数
                 vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(vars.oraclePrice, borrowAmount, vars.sumBorrowPlusEffects);
             }
         }
