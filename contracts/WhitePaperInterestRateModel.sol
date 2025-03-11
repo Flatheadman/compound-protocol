@@ -11,7 +11,7 @@ import "./InterestRateModel.sol";
 contract WhitePaperInterestRateModel is InterestRateModel {
     event NewInterestParams(uint baseRatePerBlock, uint multiplierPerBlock);
 
-    uint256 private constant BASE = 1e18;
+    uint256 private constant BASE = 1e18; // solidity不支持小数，这里通过乘以base将小数转化为整数，如计算资金利用率的时候
 
     /**
      * @notice The approximate number of blocks per year that is assumed by the interest rate model
@@ -21,12 +21,12 @@ contract WhitePaperInterestRateModel is InterestRateModel {
     /**
      * @notice The multiplier of utilization rate that gives the slope of the interest rate
      */
-    uint public multiplierPerBlock;
+    uint public multiplierPerBlock; // 资金利用率计算利率的斜率
 
     /**
      * @notice The base interest rate which is the y-intercept when utilization rate is 0
      */
-    uint public baseRatePerBlock;
+    uint public baseRatePerBlock; // 基础利率
 
     /**
      * @notice Construct an interest rate model
@@ -70,10 +70,11 @@ contract WhitePaperInterestRateModel is InterestRateModel {
 
     /**
      * @notice Calculates the current supply rate per block
+     * 存款利率公式：供应利率 = 利用率 × 借款利率 × (1 - 储备因子)
      * @param cash The amount of cash in the market
      * @param borrows The amount of borrows in the market
      * @param reserves The amount of reserves in the market
-     * @param reserveFactorMantissa The current reserve factor for the market
+     * @param reserveFactorMantissa The current reserve factor for the market 储备因子，即归属于储备金的比例
      * @return The supply rate percentage per block as a mantissa (scaled by BASE)
      */
     function getSupplyRate(uint cash, uint borrows, uint reserves, uint reserveFactorMantissa) override public view returns (uint) {
