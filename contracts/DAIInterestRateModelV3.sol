@@ -73,8 +73,8 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
         if (underlying == 0) {
             return protocolRate;
         } else {
-            uint cashRate = cash * dsrPerBlock() / underlying;
-            return cashRate + protocolRate;
+            uint cashRate = cash * dsrPerBlock() / underlying; // 从用户角度，协议应该负担所有的DSR；但是从协议角度，只有现金部分应该负担DSR，因为协议只浪费了现金部分的机会成本，其他部分是市场行为。
+            return cashRate + protocolRate;  // 这样直接加上去，估计是cashRate一般很小，无所谓了
         }
     }
 
