@@ -82,7 +82,7 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
         require(targets.length <= proposalMaxOperations, "GovernorBravo::propose: too many actions");
 
         uint latestProposalId = latestProposalIds[msg.sender];
-        if (latestProposalId != 0) {
+        if (latestProposalId != 0) { //如果不是第1次提案，检查上一次提案的状态。
           ProposalState proposersLatestProposalState = state(latestProposalId);
           require(proposersLatestProposalState != ProposalState.Active, "GovernorBravo::propose: one live proposal per proposer, found an already active proposal");
           require(proposersLatestProposalState != ProposalState.Pending, "GovernorBravo::propose: one live proposal per proposer, found an already pending proposal");
